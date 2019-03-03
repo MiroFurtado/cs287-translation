@@ -10,8 +10,8 @@ class EncoderS2S(ntorch.nn.Module):
     self.LSTM = ntorch.nn.LSTM(hidden_dim, hidden_dim, num_layers, dropout=dropout).spec("embedding", "srcSeqlen", "hidden")
   
   def forward(self, input, hidden=None): 
-    input = ntorch.tensor(torch.flip(input.values, (0,)),("srcSeqlen","batch")) #reverse input
-    
+
+    input = ntorch.tensor(torch.flip(input.values, (0,)),("srcSeqlen","batch")) #reverse input, improves translation
     x = self.embedding(input) 
     x = self.dropout(x)
     x, hidden = self.LSTM(x)
