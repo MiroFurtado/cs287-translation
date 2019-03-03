@@ -44,6 +44,9 @@ def train_seq2seq(encoder, decoder, corpus_data, num_epochs=10, lr=0.01, bsz=32)
     corpus_data : (train : torchtext.datasets, val : torchtext.datasets)
         The data that is going to be used for training and in validation
     """
+    
+    assert(torch.cuda.is_available())
+    device = torch.device('cuda:0')
     train_iter, val_iter = data.BucketIterator.splits(corpus_data, batch_size=bsz, device=device,
                                                     repeat=False, sort_key=lambda x: len(x.src))
 
