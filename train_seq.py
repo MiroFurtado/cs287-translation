@@ -9,8 +9,6 @@ import argparse
 import spacy
 import model_seq
 
-import pickle
-
 
 def eval_perplexity(encoder, decoder, corpus_iter):
     """Evaluate the perplexity of a seq2seq model on a given corpus.
@@ -95,22 +93,9 @@ def parse_arguments():
                    help='learning rate for adam')
     p.add_argument('--bsz', type=int, default=32,
                    help='batch size for train')
-    p.add_argument('--reload', type=bool, default=False,
-                   help='reload data?')
     return p.parse_args()
     
-def generate_data(rebuild=False):
-
-    if not rebuild:
-        train_pkl = open('train.pkl', 'r')   # 'r' for reading; can be omitted
-        train = pickle.load(train_pkl)         # load file content as mydict
-        train_pkl.close()         
-        val_pkl = open('val.pkl', 'r')   # 'r' for reading; can be omitted
-        val = pickle.load(val_pkl)         # load file content as mydict
-        val_pkl.close()          
-        return train, val, None      
-
-    
+def generate_data():
     spacy_de = spacy.load('de')
     spacy_en = spacy.load('en')
     def tokenize_de(text):
@@ -130,13 +115,6 @@ def generate_data(rebuild=False):
     DE.build_vocab(train.src, min_freq=MIN_FREQ)
     EN.build_vocab(train.trg, min_freq=MIN_FREQ)
 
-    train_pkl = open('train.pkl', 'w')   # Pickle file is newly created where foo1.py is
-    pickle.dump(train, train_pkl)          # dump data to f
-    train_pkl.close()
-    val_pkl; = open('val.pkl', 'w')   # Pickle file is newly created where foo1.py is
-    pickle.dump(val, val_pkl)          # dump data to f
-    val_pkl.close()
-
     return train, val, test
 
 def main():
@@ -144,7 +122,7 @@ def main():
     """
     args = parse_arguments()
     print("[*] Preparing data: 🇩🇪  -> 🇬🇧")
-    train, val, _ = generate_data(rebuild=args.reload) #throw away test just to be safe!
+    train, val, _ = generate_data() #throw away test just to be safe!
 
     print("[*] Building initial model on CUDA")
     encoder = model_seq.EncoderS2S().cuda()
