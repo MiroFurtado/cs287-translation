@@ -22,7 +22,7 @@ def eval_perplexity(encoder, decoder, corpus_iter):
     total_tokens = 0
     total_loss = 0
 
-    for batch in tqdm(corpus_iter, position=0):
+    for batch in tqdm(corpus_iter):
         _, hidden = encoder(batch.src)
         preds, _ = decoder(batch.trg, hidden)
         
@@ -37,7 +37,7 @@ def eval_perplexity(encoder, decoder, corpus_iter):
     ppl = np.exp((total_loss/total_tokens))
     return ppl
 
-def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.01, bsz=32):
+def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32):
     """Trains a basic seq2seq model.
 
     Parameters
@@ -63,7 +63,7 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.01, bsz=32):
     decoder_opt = torch.optim.Adam(decoder.parameters(), lr=lr)
 
     for epoch in range(num_epochs):
-        for batch in tqdm(train_iter, position=0):
+        for batch in tqdm(train_iter):
             
             encoder_opt.zero_grad()
             decoder_opt.zero_grad()
@@ -87,8 +87,12 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.01, bsz=32):
 
 def parse_arguments():
     p = argparse.ArgumentParser(description='Hyperparams')
-    p.add_argument('-epochs', type=int, default=100,
+    p.add_argument('--epochs', type=int, default=10,
                    help='number of epochs for train')
+    p.add_argument('--lr', type=float, default=0.0001,
+                   help='learning rate for adam')
+    p.add_argument('--bsz', type=int, default=32,
+                   help='batch size for train')
     return p.parse_args()
     
 def generate_data():
@@ -117,14 +121,14 @@ def main():
     """Entrance function for running from console
     """
     args = parse_arguments()
-    print("[*] Preparing data: 🇩🇪  ->  🇬🇧")
+    print("[*] Preparing data: 🇩🇪  -> 🇬🇧")
     train, val, _ = generate_data() #throw away test just to be safe!
 
     print("[*] Building initial model on CUDA")
     encoder = model_seq.EncoderS2S().cuda()
     decoder = model_seq.DecoderS2S().cuda()
     print("    🧗 Begin loss function descent")
-    train_model(encoder, decoder, (train, val))
+    train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr, bsz=args.bsz)
 
 
 
