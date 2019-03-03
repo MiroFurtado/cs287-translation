@@ -24,7 +24,7 @@ class DecoderS2S(ntorch.nn.Module):
     self.embedding = ntorch.nn.Embedding(trg_vocab_len, hidden_dim).spec("trgSeqlen", "embedding")
     self.dropout = ntorch.nn.Dropout(dropout)
     self.LSTM = ntorch.nn.LSTM(hidden_dim, hidden_dim, num_layers, dropout=dropout).spec("embedding", "trgSeqlen", "hidden")
-    self.out = ntorch.nn.Linear(hidden_dim, len(EN.vocab)).spec("hidden", "vocab")
+    self.out = ntorch.nn.Linear(hidden_dim, trg_vocab_len).spec("hidden", "vocab")
     
   def forward(self, input, hidden=None):
     x = self.embedding(input)
