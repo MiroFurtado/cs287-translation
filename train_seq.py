@@ -37,7 +37,7 @@ def eval_perplexity(encoder, decoder, corpus_iter):
     ppl = np.exp((total_loss/total_tokens))
     return ppl
 
-def train(encoder, decoder, corpus_data, num_epochs=10, lr=0.01, bsz=32):
+def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.01, bsz=32):
     """Trains a basic seq2seq model.
 
     Parameters
@@ -117,14 +117,14 @@ def main():
     """Entrance function for running from console
     """
     args = parse_arguments()
-    print("[*] Preparing data 🇩🇪->🇬🇧")
+    print("[*] Preparing data: 🇩🇪  ->  🇬🇧")
     train, val, _ = generate_data() #throw away test just to be safe!
 
     print("[*] Building initial model on CUDA")
     encoder = model_seq.EncoderS2S().cuda()
     decoder = model_seq.DecoderS2S().cuda()
     print("    🧗 Begin loss function descent")
-    train(encoder, decoder, (train, val))
+    train_model(encoder, decoder, (train, val))
 
 
 
