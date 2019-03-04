@@ -134,7 +134,10 @@ def generate_data():
 def main():
     "Entrance function for running from console"
     args = parse_arguments()
-    print("Attn %b" % args.attn)
+    if args.attn:
+        print("[*] Starting train of attention model")
+    else:
+        print("[*] Starting train of seq2seq model")
     print("[*] Preparing data: 🇩🇪  -> 🇬🇧")
     train, val, _ = generate_data() #throw away test just to be safe!
 
