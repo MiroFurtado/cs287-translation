@@ -37,7 +37,7 @@ def eval_perplexity(encoder, decoder, corpus_iter):
     ppl = np.exp((total_loss/total_tokens))
     return ppl
 
-def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32):
+def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32, prefix = "checkpoint"):
     """Trains a basic seq2seq model.
 
     Parameters
@@ -61,6 +61,7 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32):
     loss_func = ntorch.nn.CrossEntropyLoss().spec("vocab")
     encoder_opt = torch.optim.Adam(encoder.parameters(), lr=lr)
     decoder_opt = torch.optim.Adam(decoder.parameters(), lr=lr)
+    ppl = 10000
 
     for epoch in range(num_epochs):
         for batch in tqdm(train_iter):
@@ -79,17 +80,26 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32):
             loss.backward() #backprop thru loss
             encoder_opt.step()
             decoder_opt.step() #descend!
-
+        temp_ppl =  eval_perplexity(encoder, decoder, val_iter)
         print("\n[***] EPOCH %d: Loss %f, val perplexity %f"\
-                % (epoch, loss.item(), eval_perplexity(encoder, decoder, val_iter))) #update
+                % (epoch, loss.item(), temp_ppl)) #update
+        if epoch % 5 == 0:
+            if temp_ppl < ppl:
+                print("[***] Saving model with improved perplexity")
+                ppl = temp_ppl
+                torch.save(decoder.state_dict(), prefix+"_e"+epoch+"_"+"decoder"+".w")
+                torch.save(encoder.state_dict(), prefix+"_p"+ppl+"_e"+epoch+"_"+"encoder"+".w")
+
         encoder.train() #turn dropout back on
         decoder.train()
 
 def parse_arguments():
     "Parse arguments from console"
     p = argparse.ArgumentParser(description='Hyperparams')
-    p.add_argument('--epochs', type=int, default=10,
+    p.add_argument('--epochs', type=int, default=100,
                    help='number of epochs for train')
+    p.add_argument('--prefix', type=string, default="checkpoint",
+                   help='Prefix for model checkpointing')
     p.add_argument('--lr', type=float, default=0.0001,
                    help='learning rate for adam')
     p.add_argument('--bsz', type=int, default=32,
@@ -129,7 +139,7 @@ def main():
     encoder = model_seq.EncoderS2S().cuda()
     decoder = model_seq.DecoderS2S().cuda()
     print("\t🧗 Begin loss function descent")
-    train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr, bsz=args.bsz)
+    train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr, bsz=args.bsz, prefix=args.prefix)
 
 
 
