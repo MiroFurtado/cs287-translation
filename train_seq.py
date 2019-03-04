@@ -86,6 +86,7 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32):
         decoder.train()
 
 def parse_arguments():
+    "Parse arguments from console"
     p = argparse.ArgumentParser(description='Hyperparams')
     p.add_argument('--epochs', type=int, default=10,
                    help='number of epochs for train')
@@ -96,6 +97,7 @@ def parse_arguments():
     return p.parse_args()
     
 def generate_data():
+    "Generate data from spacy: de -> en"
     spacy_de = spacy.load('de')
     spacy_en = spacy.load('en')
     def tokenize_de(text):
@@ -118,8 +120,7 @@ def generate_data():
     return train, val, test
 
 def main():
-    """Entrance function for running from console
-    """
+    "Entrance function for running from console"
     args = parse_arguments()
     print("[*] Preparing data: 🇩🇪  -> 🇬🇧")
     train, val, _ = generate_data() #throw away test just to be safe!
@@ -127,7 +128,7 @@ def main():
     print("[*] Building initial model on CUDA")
     encoder = model_seq.EncoderS2S().cuda()
     decoder = model_seq.DecoderS2S().cuda()
-    print("    🧗 Begin loss function descent")
+    print("\t🧗 Begin loss function descent")
     train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr, bsz=args.bsz)
 
 
