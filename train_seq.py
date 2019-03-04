@@ -105,7 +105,7 @@ def parse_arguments():
                    help='learning rate for adam')
     p.add_argument('--bsz', type=int, default=32,
                    help='batch size for train')
-    parser.add_argument('--attn', action='store_true')
+    p.add_argument('--attn', action='store_true')
     return p.parse_args()
     
 def generate_data():
@@ -134,6 +134,7 @@ def generate_data():
 def main():
     "Entrance function for running from console"
     args = parse_arguments()
+    print("Attn %b" % args.attn)
     print("[*] Preparing data: 🇩🇪  -> 🇬🇧")
     train, val, _ = generate_data() #throw away test just to be safe!
 
