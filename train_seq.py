@@ -8,6 +8,7 @@ import numpy as np
 import argparse
 import spacy
 import model_seq
+import model_attn
 
 
 def eval_perplexity(encoder, decoder, corpus_iter):
@@ -23,8 +24,8 @@ def eval_perplexity(encoder, decoder, corpus_iter):
     total_loss = 0
 
     for batch in tqdm(corpus_iter):
-        _, hidden = encoder(batch.src)
-        preds, _ = decoder(batch.trg, hidden)
+        context, hidden = encoder(batch.src)
+        preds, _ = decoder(batch.trg, hidden, context)
         
         preds_n = preds[{"trgSeqlen": slice(0,preds.size("trgSeqlen")-1)}] # XXXXXXX_
         trg_n = batch.trg[{"trgSeqlen": slice(1,preds.size("trgSeqlen"))}] # _XXXXXXX
@@ -37,7 +38,7 @@ def eval_perplexity(encoder, decoder, corpus_iter):
     ppl = np.exp((total_loss/total_tokens))
     return ppl
 
-def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32):
+def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32, prefix = "checkpoint"):
     """Trains a basic seq2seq model.
 
     Parameters
@@ -61,6 +62,7 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32):
     loss_func = ntorch.nn.CrossEntropyLoss().spec("vocab")
     encoder_opt = torch.optim.Adam(encoder.parameters(), lr=lr)
     decoder_opt = torch.optim.Adam(decoder.parameters(), lr=lr)
+    ppl = 10000
 
     for epoch in range(num_epochs):
         for batch in tqdm(train_iter):
@@ -68,8 +70,8 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32):
             encoder_opt.zero_grad()
             decoder_opt.zero_grad()
             
-            _, hidden = encoder(batch.src)
-            preds, _ = decoder(batch.trg, hidden)
+            decoder_context, hidden = encoder(batch.src)
+            preds, _ = decoder(batch.trg, hidden, decoder_context)
             
             #Miro 2:30 PM 3/1/19: Shift prediction vs target - don't predict identity mapping
             preds_n = preds[{"trgSeqlen": slice(0,preds.size("trgSeqlen")-1)}]
@@ -79,23 +81,35 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32):
             loss.backward() #backprop thru loss
             encoder_opt.step()
             decoder_opt.step() #descend!
-
+        temp_ppl =  eval_perplexity(encoder, decoder, val_iter)
         print("\n[***] EPOCH %d: Loss %f, val perplexity %f"\
-                % (epoch, loss.item(), eval_perplexity(encoder, decoder, val_iter))) #update
+                % (epoch, loss.item(), temp_ppl)) #update
+        if epoch % 5 == 0:
+            if temp_ppl < ppl:
+                print("[***] Saving model with improved perplexity")
+                ppl = temp_ppl
+                torch.save(decoder.state_dict(), prefix+"_p"+str(ppl)+"_e"+str(epoch)+"_"+"decoder"+".w")
+                torch.save(encoder.state_dict(), prefix+"_p"+str(ppl)+"_e"+str(epoch)+"_"+"encoder"+".w")
+
         encoder.train() #turn dropout back on
         decoder.train()
 
 def parse_arguments():
+    "Parse arguments from console"
     p = argparse.ArgumentParser(description='Hyperparams')
-    p.add_argument('--epochs', type=int, default=10,
+    p.add_argument('--epochs', type=int, default=100,
                    help='number of epochs for train')
+    p.add_argument('--prefix', default="checkpoint",
+                   help='Prefix for model checkpointing')
     p.add_argument('--lr', type=float, default=0.0001,
                    help='learning rate for adam')
     p.add_argument('--bsz', type=int, default=32,
                    help='batch size for train')
+    p.add_argument('--attn', action='store_true')
     return p.parse_args()
     
 def generate_data():
+    "Generate data from spacy: de -> en"
     spacy_de = spacy.load('de')
     spacy_en = spacy.load('en')
     def tokenize_de(text):
@@ -118,17 +132,23 @@ def generate_data():
     return train, val, test
 
 def main():
-    """Entrance function for running from console
-    """
+    "Entrance function for running from console"
     args = parse_arguments()
+    if args.attn:
+        print("[*] Starting train of attention model")
+    else:
+        print("[*] Starting train of seq2seq model")
     print("[*] Preparing data: 🇩🇪  -> 🇬🇧")
     train, val, _ = generate_data() #throw away test just to be safe!
 
     print("[*] Building initial model on CUDA")
     encoder = model_seq.EncoderS2S().cuda()
-    decoder = model_seq.DecoderS2S().cuda()
-    print("    🧗 Begin loss function descent")
-    train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr, bsz=args.bsz)
+    if args.attn:
+        decoder = model_attn.DecoderAttn().cuda()
+    else:
+        decoder = model_seq.DecoderS2S().cuda()
+    print("\t🧗 Begin loss function descent")
+    train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr, bsz=args.bsz, prefix=args.prefix)
 
 
 
