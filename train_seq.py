@@ -23,8 +23,8 @@ def eval_perplexity(encoder, decoder, corpus_iter):
     total_loss = 0
 
     for batch in tqdm(corpus_iter):
-        _, hidden = encoder(batch.src)
-        preds, _ = decoder(batch.trg, hidden)
+        context, hidden = encoder(batch.src)
+        preds, _ = decoder(batch.trg, hidden, context)
         
         preds_n = preds[{"trgSeqlen": slice(0,preds.size("trgSeqlen")-1)}] # XXXXXXX_
         trg_n = batch.trg[{"trgSeqlen": slice(1,preds.size("trgSeqlen"))}] # _XXXXXXX
