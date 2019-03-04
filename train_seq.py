@@ -8,6 +8,7 @@ import numpy as np
 import argparse
 import spacy
 import model_seq
+import model_attn
 
 
 def eval_perplexity(encoder, decoder, corpus_iter):
@@ -104,6 +105,7 @@ def parse_arguments():
                    help='learning rate for adam')
     p.add_argument('--bsz', type=int, default=32,
                    help='batch size for train')
+    parser.add_argument('--attn', action='store_true')
     return p.parse_args()
     
 def generate_data():
@@ -137,7 +139,10 @@ def main():
 
     print("[*] Building initial model on CUDA")
     encoder = model_seq.EncoderS2S().cuda()
-    decoder = model_seq.DecoderS2S().cuda()
+    if args.attn:
+        decoder = model_attn.DecoderAttn().cuda()
+    else:
+        decoder = model_seq.DecoderS2S().cuda()
     print("\t🧗 Begin loss function descent")
     train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr, bsz=args.bsz, prefix=args.prefix)
 
