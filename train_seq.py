@@ -68,8 +68,8 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32):
             encoder_opt.zero_grad()
             decoder_opt.zero_grad()
             
-            _, hidden = encoder(batch.src)
-            preds, _ = decoder(batch.trg, hidden)
+            decoder_context, hidden = encoder(batch.src)
+            preds, _ = decoder(batch.trg, hidden, decoder_context)
             
             #Miro 2:30 PM 3/1/19: Shift prediction vs target - don't predict identity mapping
             preds_n = preds[{"trgSeqlen": slice(0,preds.size("trgSeqlen")-1)}]
