@@ -87,8 +87,8 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32, 
             if temp_ppl < ppl:
                 print("[***] Saving model with improved perplexity")
                 ppl = temp_ppl
-                torch.save(decoder.state_dict(), prefix+"_e"+epoch+"_"+"decoder"+".w")
-                torch.save(encoder.state_dict(), prefix+"_p"+ppl+"_e"+epoch+"_"+"encoder"+".w")
+                torch.save(decoder.state_dict(), prefix+"_p"+str(ppl)+"_e"+str(epoch)+"_"+"decoder"+".w")
+                torch.save(encoder.state_dict(), prefix+"_p"+str(ppl)+"_e"+str(epoch)+"_"+"encoder"+".w")
 
         encoder.train() #turn dropout back on
         decoder.train()
