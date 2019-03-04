@@ -98,7 +98,7 @@ def parse_arguments():
     p = argparse.ArgumentParser(description='Hyperparams')
     p.add_argument('--epochs', type=int, default=100,
                    help='number of epochs for train')
-    p.add_argument('--prefix', type=string, default="checkpoint",
+    p.add_argument('--prefix', default="checkpoint",
                    help='Prefix for model checkpointing')
     p.add_argument('--lr', type=float, default=0.0001,
                    help='learning rate for adam')
