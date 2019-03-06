@@ -38,7 +38,7 @@ def eval_perplexity(encoder, decoder, corpus_iter):
     ppl = np.exp((total_loss/total_tokens))
     return ppl
 
-def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32, prefix = "checkpoint"):
+def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=3e-3, bsz=32, prefix = "checkpoint"):
     """Trains a basic seq2seq model.
 
     Parameters
@@ -101,7 +101,7 @@ def parse_arguments():
                    help='number of epochs for train')
     p.add_argument('--prefix', default="checkpoint",
                    help='Prefix for model checkpointing')
-    p.add_argument('--lr', type=float, default=0.0001,
+    p.add_argument('--lr', type=float, default=0.003,
                    help='learning rate for adam')
     p.add_argument('--bsz', type=int, default=32,
                    help='batch size for train')

@@ -5,7 +5,7 @@ class DecoderAttn(ntorch.nn.Module):
     """Decoder based on the implementation in Yuntian's slides and Luong.
     """
 
-    def __init__(self, hidden_dim = 512, num_layers = 2, dropout = 0.5, trg_vocab_len = 11560):
+    def __init__(self, hidden_dim = 500, num_layers = 2, dropout = 0.5, trg_vocab_len = 11560):
         super(DecoderAttn, self).__init__()
 
         self.embedding = ntorch.nn.Embedding(trg_vocab_len, hidden_dim).spec("trgSeqlen", "embedding")
@@ -42,10 +42,10 @@ class DecoderAttn(ntorch.nn.Module):
         x = self.embedding(input)
         x = self.dropout(x)
         x, hidden = self.LSTM(x, hidden)
+        x = self.dropout(x) #Miro 4:15 PM 3/4/19 - Changing dropout location
         context = self.get_context(x, decoder_context)
 
         x = self.h2h(ntorch.cat([x,context], "hidden")).relu()
-        x = self.dropout(x) #Miro 4:15 PM 3/4/19 - Changing dropout location
         y = self.out(x)
         # No softmax because cross-entropy
         return y, hidden
