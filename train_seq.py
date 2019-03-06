@@ -38,7 +38,7 @@ def eval_perplexity(encoder, decoder, corpus_iter):
     ppl = np.exp((total_loss/total_tokens))
     return ppl
 
-def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.01, bsz=32, prefix = "checkpoint"):
+def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32, prefix = "checkpoint"):
     """Trains a basic seq2seq model.
 
     Parameters
@@ -60,8 +60,8 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.01, bsz=32, p
     decoder.train()
 
     loss_func = ntorch.nn.CrossEntropyLoss().spec("vocab")
-    encoder_opt = torch.optim.SGD(encoder.parameters(), lr=lr)
-    decoder_opt = torch.optim.SGD(decoder.parameters(), lr=lr)
+    encoder_opt = torch.optim.Adam(encoder.parameters(), lr=lr)
+    decoder_opt = torch.optim.Adam(decoder.parameters(), lr=lr)
     ppl = 10000
 
     for epoch in range(num_epochs):
@@ -93,9 +93,6 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.01, bsz=32, p
 
         encoder.train() #turn dropout back on
         decoder.train()
-        lr /= 4
-        encoder_opt = torch.optim.SGD(encoder.parameters(), lr=lr)
-        decoder_opt = torch.optim.SGD(decoder.parameters(), lr=lr)
 
 def parse_arguments():
     "Parse arguments from console"
