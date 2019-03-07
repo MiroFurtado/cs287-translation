@@ -38,7 +38,7 @@ def eval_perplexity(encoder, decoder, corpus_iter):
     ppl = np.exp((total_loss/total_tokens))
     return ppl
 
-def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=3e-3, bsz=32, prefix = "checkpoint"):
+def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32, prefix = "checkpoint", weight_decay=0.):
     """Trains a basic seq2seq model.
 
     Parameters
@@ -56,13 +56,14 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=3e-3, bsz=32, p
     train_iter, val_iter = data.BucketIterator.splits(corpus_data, batch_size=bsz, device=device,
                                                     repeat=False, sort_key=lambda x: len(x.src))
 
+    loss_func = ntorch.nn.CrossEntropyLoss().spec("vocab")
+    encoder_opt = torch.optim.Adam(encoder.parameters(), lr=lr, weight_decay = weight_decay)
+    decoder_opt = torch.optim.Adam(decoder.parameters(), lr=lr, weight_decay=weight_decay)
+    ppl = 10000
+    print("[***] Starting ppl %f" %eval_perplexity(encoder, decoder, val_iter))
+
     encoder.train() #
     decoder.train()
-
-    loss_func = ntorch.nn.CrossEntropyLoss().spec("vocab")
-    encoder_opt = torch.optim.Adam(encoder.parameters(), lr=lr)
-    decoder_opt = torch.optim.Adam(decoder.parameters(), lr=lr)
-    ppl = 10000
 
     for epoch in range(num_epochs):
         for batch in tqdm(train_iter):
@@ -101,8 +102,14 @@ def parse_arguments():
                    help='number of epochs for train')
     p.add_argument('--prefix', default="checkpoint",
                    help='Prefix for model checkpointing')
-    p.add_argument('--lr', type=float, default=0.003,
+    p.add_argument('--decoder_path', default=None,
+                   help='Path to decoder')
+    p.add_argument('--encoder_path', default=None,
+                   help='Path to encoder')
+    p.add_argument('--lr', type=float, default=0.0001,
                    help='learning rate for adam')
+    p.add_argument('--decay', type=float, default=0.0005,
+                   help='weight decay')
     p.add_argument('--bsz', type=int, default=32,
                    help='batch size for train')
     p.add_argument('--attn', action='store_true')
@@ -147,8 +154,15 @@ def main():
         decoder = model_attn.DecoderAttn().cuda()
     else:
         decoder = model_seq.DecoderS2S().cuda()
+    if args.decoder_path:
+        print("[*] Loading model from file")
+        decoder.load_state_dict(torch.load(args.decoder_path))
+    if args.encoder_path:
+        encoder.load_state_dict(torch.load(args.encoder_path))
     print("\t🧗 Begin loss function descent")
-    train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr, bsz=args.bsz, prefix=args.prefix)
+    print("\t\t Hyperparameters: lr %f, epochs %d, bsz %d, decay %f" %(args.lr, args.epochs, args.bsz, args.decay))
+    train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr,\
+         bsz=args.bsz, prefix=args.prefix, weight_decay=args.decay)
 
 
 
