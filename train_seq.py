@@ -18,23 +18,24 @@ def eval_perplexity(encoder, decoder, corpus_iter):
     encoder.eval() #no dropout :(
     decoder.eval()
 
-    loss_func = ntorch.nn.CrossEntropyLoss(reduction="none").spec("vocab")
+    loss_func = ntorch.nn.CrossEntropyLoss(reduction="none", ignore_index=1).spec("vocab")
 
     total_tokens = 0
     total_loss = 0
 
     for batch in tqdm(corpus_iter):
-        context, hidden = encoder(batch.src)
-        preds, _ = decoder(batch.trg, hidden, context)
-        
-        preds_n = preds[{"trgSeqlen": slice(0,preds.size("trgSeqlen")-1)}] # XXXXXXX_
-        trg_n = batch.trg[{"trgSeqlen": slice(1,preds.size("trgSeqlen"))}] # _XXXXXXX
-        
-        loss = loss_func(preds_n, trg_n)
-        loss = loss*(trg_n!=1).float() #only credit for non-pad predictions
-        
-        total_loss += loss.sum(('trgSeqlen','batch')).item() #sum up all the loss
-        total_tokens += (trg_n!=1).long().sum(('trgSeqlen','batch')).item() #add all non-padding tokens
+        with torch.no_grad():
+            context, hidden = encoder(batch.src)
+            preds, _ = decoder(batch.trg, hidden, context)
+            
+            preds_n = preds[{"trgSeqlen": slice(0,preds.size("trgSeqlen")-1)}] # XXXXXXX_
+            trg_n = batch.trg[{"trgSeqlen": slice(1,preds.size("trgSeqlen"))}] # _XXXXXXX
+            
+            loss = loss_func(preds_n, trg_n)
+            #loss = loss*(trg_n!=1).float() #only credit for non-pad predictions
+            
+            total_loss += loss.sum(('trgSeqlen','batch')).item() #sum up all the loss
+            total_tokens += (trg_n!=1).long().sum(('trgSeqlen','batch')).item() #add all non-padding tokens
     ppl = np.exp((total_loss/total_tokens))
     return ppl
 
@@ -57,7 +58,7 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32, 
     train_iter, val_iter = data.BucketIterator.splits(corpus_data, batch_size=bsz, device=device,
                                                     repeat=False, sort_key=lambda x: len(x.src))
 
-    loss_func = ntorch.nn.CrossEntropyLoss().spec("vocab")
+    loss_func = ntorch.nn.CrossEntropyLoss(ignore_index=1).spec("vocab")
     encoder_opt = torch.optim.Adam(encoder.parameters(), lr=lr, weight_decay = weight_decay)
     decoder_opt = torch.optim.Adam(decoder.parameters(), lr=lr, weight_decay=weight_decay)
     ppl = 10000

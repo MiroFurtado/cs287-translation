@@ -262,6 +262,7 @@ def parse_arguments():
     p.add_argument('--maxlen', type=int, default=3,
                    help='Maximum hypothesis length')
     p.add_argument('--attn', action='store_true')
+    p.add_argument('--bleu', action='store_true')
     p.add_argument('--cuda', action='store_true')
     p.add_argument('--prefix', default="beamsearch",
                    help='Prefix for filenames')
@@ -272,6 +273,32 @@ def parse_arguments():
     p.add_argument('--writebeam', action='store_true',
                    help='Saves beam graph')
     return p.parse_args()
+
+def bleu_output(args, encoder, decoder):
+    print("[*] Translating")
+    if args.writepreds:
+        f = open(args.prefix + "_preds.txt", "w")
+    for i, sentence in tqdm(enumerate(open("source_test.txt")), total=800, position=0):
+        de_sentence = [DE_vocab.stoi[word] for word in sentence.split(" ")]
+        de_sentence = ntorch.tensor([de_sentence], names=("batch", "srcSeqlen")).to(device)
+        de_sentence = de_sentence.transpose("srcSeqlen", "batch")
+        encoded_context, encoded_summary = encoder(de_sentence)
+        encoded_summary = get_each(encoded_summary, "batch", 0) #squeeze batch dim
+        encoded_context = encoded_context[{"batch": 0}]
+
+        words, _, avgscores, stack = beam_decode(encoded_summary, decoder, maxlen=args.maxlen, beam_width=args.beam_width, device=device, encoded_context=encoded_context, num_hypotheses_out=1)
+
+        if args.writepreds:
+            f.write(' '.join([escape(EN_vocab.itos[i]) for i in words[{"beam": 0}].tolist()]) + "\n")
+        if args.printpreds:
+            tqdm.write("\n  GERMAN: " + ' '.join([DE_vocab.itos[i] for i in de_sentence.squeeze("batch").tolist()]))
+            for h in range(args.hypotheses):
+                tqdm.write('{:.5f}: '.format(avgscores[{"beam": h}].item()) + ' '.join([EN_vocab.itos[i] for i in words[{"beam": h}].tolist()]))
+        if args.writebeam:
+            display_beam(stack, EN_vocab, show_token=True)
+            plt.savefig(args.prefix + "_beam_%03d.png" % i)
+    if args.writepreds:
+        f.close()
 
 def main():
     "Entrance function for running from console"
@@ -294,6 +321,10 @@ def main():
     decoder.load_state_dict(decoder_weights)
     
     print("[*] Translating")
+    if args.bleu:
+        bleu_output(args, encoder, decoder)
+        return
+
     if args.writepreds:
         f = open(args.prefix + "_preds.txt", "w")
         f.write("Id,Predicted\n")
@@ -318,6 +349,8 @@ def main():
             plt.savefig(args.prefix + "_beam_%03d.png" % i)
     if args.writepreds:
         f.close()
+
+
 
 if __name__ == "__main__":
     try:

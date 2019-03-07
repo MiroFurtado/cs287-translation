@@ -1,6 +1,7 @@
 import torch
 from namedtensor import ntorch, NamedTensor
 
+
 class DecoderAttn(ntorch.nn.Module):
     """Decoder based on the implementation in Yuntian's slides and Luong.
     """
@@ -43,8 +44,8 @@ class DecoderAttn(ntorch.nn.Module):
         x = self.dropout(x)
         x, hidden = self.LSTM(x, hidden)
         x = self.dropout(x) #Miro 4:15 PM 3/4/19 - Changing dropout location
+        
         context = self.get_context(x, decoder_context)
-
         x = self.h2h(ntorch.cat([x,context], "hidden")).relu()
         y = self.out(x)
         # No softmax because cross-entropy

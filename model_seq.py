@@ -15,6 +15,7 @@ class EncoderS2S(ntorch.nn.Module):
     x = self.embedding(input) 
     x = self.dropout(x)
     x, hidden = self.LSTM(x)
+    x = self.dropout(x) #Miro 3/7/19 12:00 PM - Add dropout
     return x, hidden
 
 class DecoderS2S(ntorch.nn.Module):
