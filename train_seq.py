@@ -52,6 +52,7 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32, 
     """
     
     assert(torch.cuda.is_available())
+    print("\t\t Hyperparameters: lr %f, epochs %d, bsz %d, decay %f" %(lr, num_epochs, bsz, weight_decay))
     device = torch.device('cuda:0')
     train_iter, val_iter = data.BucketIterator.splits(corpus_data, batch_size=bsz, device=device,
                                                     repeat=False, sort_key=lambda x: len(x.src))
@@ -113,6 +114,8 @@ def parse_arguments():
     p.add_argument('--bsz', type=int, default=32,
                    help='batch size for train')
     p.add_argument('--attn', action='store_true')
+    p.add_argument('--n', type=int, default=2,
+                   help='hidden state multiplier')
     return p.parse_args()
     
 def generate_data():
@@ -151,16 +154,16 @@ def main():
     print("[*] Building initial model on CUDA")
     encoder = model_seq.EncoderS2S().cuda()
     if args.attn:
-        decoder = model_attn.DecoderAttn().cuda()
+        decoder = model_attn.DecoderAttn(n=args.n).cuda()
     else:
         decoder = model_seq.DecoderS2S().cuda()
     if args.decoder_path:
-        print("[*] Loading model from file")
+        print("[*] Loading decoder model from file")
         decoder.load_state_dict(torch.load(args.decoder_path))
     if args.encoder_path:
+        print("[*] Loading encoder model from file")
         encoder.load_state_dict(torch.load(args.encoder_path))
     print("\t🧗 Begin loss function descent")
-    print("\t\t Hyperparameters: lr %f, epochs %d, bsz %d, decay %f" %(args.lr, args.epochs, args.bsz, args.decay))
     train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr,\
          bsz=args.bsz, prefix=args.prefix, weight_decay=args.decay)
 
