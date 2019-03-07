@@ -292,6 +292,8 @@ def main():
         decoder = model_seq.DecoderS2S(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
     encoder.load_state_dict(encoder_weights)
     decoder.load_state_dict(decoder_weights)
+    encoder.eval() # no dropout :(
+    decoder.eval()
     
     print("[*] Translating")
     if args.writepreds:
