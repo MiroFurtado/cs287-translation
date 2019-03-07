@@ -92,13 +92,15 @@ def main():
             word = scores.argmax("vocab")
             preds.append(word.detach())
             attn.append(attn_weights.detach())
+            if word.item() == 3:
+                break
         preds = ntorch.cat(preds, "trgSeqlen").squeeze("batch")
         attn = ntorch.cat(attn, "trgSeqlen").squeeze("batch")
-        plt.imshow(np.flip(attn.numpy(), 1))
+        plt.imshow(np.flip(attn.numpy(), 1), cmap="gray")
         plt.colorbar()
         plt.xlabel("German")
         plt.ylabel("English")
-        plt.xticks(np.arange(de_sentence.shape["srcSeqlen"]), [DE_vocab.itos[i] for i in de_sentence[{"batch": 0}].tolist()])
+        plt.xticks(np.arange(de_sentence.shape["srcSeqlen"]), [DE_vocab.itos[i] for i in de_sentence[{"batch": 0}].tolist()], rotation=45)
         plt.yticks(np.arange(preds.shape["trgSeqlen"]), [EN_vocab.itos[i] for i in preds.tolist()])
         plt.show()
         break
