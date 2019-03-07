@@ -267,43 +267,18 @@ def parse_arguments():
     p.add_argument('--maxlen', type=int, default=3,
                    help='Maximum hypothesis length')
     p.add_argument('--attn', action='store_true')
-    p.add_argument('--bleu', action='store_true')
+    p.add_argument('--bleu', action='store_true',
+                   help='Write predictions to file in BLEU calculation format')
     p.add_argument('--cuda', action='store_true')
     p.add_argument('--prefix', default="beamsearch",
                    help='Prefix for filenames')
     p.add_argument('--writepreds', action='store_true',
-                   help='Write predictions to file')
+                   help='Write predictions to file in Kaggle submission format')
     p.add_argument('--printpreds', action='store_true',
                    help='Print predictions and average log probabilities')
     p.add_argument('--writebeam', action='store_true',
                    help='Saves beam graph')
     return p.parse_args()
-
-def bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device):
-    if args.writepreds:
-        f = open(args.prefix + "_preds.txt", "w")
-    for i, sentence in tqdm(enumerate(open("source_test.txt")), total=800, position=0):
-        de_sentence = [DE_vocab.stoi[word] for word in sentence.split(" ")]
-        de_sentence = ntorch.tensor([de_sentence], names=("batch", "srcSeqlen")).to(device)
-        de_sentence = de_sentence.transpose("srcSeqlen", "batch")
-        encoded_context, encoded_summary = encoder(de_sentence)
-        encoded_summary = get_each(encoded_summary, "batch", 0) #squeeze batch dim
-        encoded_context = encoded_context[{"batch": 0}]
-
-        words, _, avgscores, stack = beam_decode(encoded_summary, decoder, maxlen=args.maxlen, beam_width=args.beam_width, device=device, encoded_context=encoded_context, num_hypotheses_out=1)
-
-        if args.writepreds:
-            sentence = ' '.join([EN_vocab.itos[i] for i in words[{"beam": 0}].tolist()])
-            f.write(escape_bleu(sentence))
-        if args.printpreds:
-            tqdm.write("\n  GERMAN: " + ' '.join([DE_vocab.itos[i] for i in de_sentence.squeeze("batch").tolist()]))
-            for h in range(args.hypotheses):
-                tqdm.write('{:.5f}: '.format(avgscores[{"beam": h}].item()) + ' '.join([EN_vocab.itos[i] for i in words[{"beam": h}].tolist()]))
-        if args.writebeam:
-            display_beam(stack, EN_vocab, show_token=True)
-            plt.savefig(args.prefix + "_beam_%03d.png" % i)
-    if args.writepreds:
-        f.close()
 
 def main():
     "Entrance function for running from console"
@@ -330,13 +305,12 @@ def main():
     decoder.eval()
     
     print("[*] Translating")
-    if args.bleu:
-        bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device)
-        return
 
     if args.writepreds:
         f = open(args.prefix + "_preds.txt", "w")
         f.write("Id,Predicted\n")
+    if args.bleu:
+        f_bleu = open(args.prefix + "_bleu_preds.txt", "w")
     for i, sentence in tqdm(enumerate(open("source_test.txt")), total=800, position=0):
         de_sentence = [DE_vocab.stoi[word] for word in sentence.split(" ")]
         de_sentence = ntorch.tensor([de_sentence], names=("batch", "srcSeqlen")).to(device)
@@ -349,6 +323,9 @@ def main():
 
         if args.writepreds:
             f.write(str(i) + "," + ' '.join(['|'.join([escape(EN_vocab.itos[i]) for i in words[{"beam": h}].tolist()]) for h in range(args.hypotheses)]) + "\n")
+        if args.bleu:
+            sentence = ' '.join([EN_vocab.itos[i] for i in words[{"beam": 0}].tolist()]) # the hypotheses are already sorted, so the top hypothesis is the best one
+            f_bleu.write(escape_bleu(sentence))
         if args.printpreds:
             tqdm.write("\n  GERMAN: " + ' '.join([DE_vocab.itos[i] for i in de_sentence.squeeze("batch").tolist()]))
             for h in range(args.hypotheses):
@@ -358,6 +335,8 @@ def main():
             plt.savefig(args.prefix + "_beam_%03d.png" % i)
     if args.writepreds:
         f.close()
+    if args.bleu:
+        f_bleu.close()
 
 
 
