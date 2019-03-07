@@ -260,6 +260,8 @@ def parse_arguments():
                    help='File of weights for encoder')
     p.add_argument('decoder', type=open_rb,
                    help='File of weights for decoder')
+    p.add_argument('src', type=open,
+                   help='German text file to be translated')
     p.add_argument('-k', '--beam_width', type=int, default=10,
                    help='Beam width')
     p.add_argument('--hypotheses', type=int, default=100,
@@ -311,7 +313,7 @@ def main():
         f.write("Id,Predicted\n")
     if args.bleu:
         f_bleu = open(args.prefix + "_bleu_preds.txt", "w")
-    for i, sentence in tqdm(enumerate(open("source_test.txt")), total=800, position=0):
+    for i, sentence in tqdm(enumerate(args.src), position=0):
         de_sentence = [DE_vocab.stoi[word] for word in sentence.split(" ")]
         de_sentence = ntorch.tensor([de_sentence], names=("batch", "srcSeqlen")).to(device)
         de_sentence = de_sentence.transpose("srcSeqlen", "batch")
