@@ -7,46 +7,41 @@ from tqdm import tqdm
 import numpy as np
 import argparse
 import spacy
-import model_seq
-import model_attn
+from model import *
 
 
-def eval_perplexity(encoder, decoder, corpus_iter):
+def eval_perplexity(model, corpus_iter):
     """Evaluate the perplexity of a seq2seq model on a given corpus.
     """
 
-    encoder.eval() #no dropout :(
-    decoder.eval()
+    model.eval()
 
-    loss_func = ntorch.nn.CrossEntropyLoss(reduction="none").spec("vocab")
+    loss_func = ntorch.nn.CrossEntropyLoss(reduction="none", ignore_index=1).spec("vocab")
 
     total_tokens = 0
     total_loss = 0
 
     for batch in tqdm(corpus_iter):
-        context, hidden = encoder(batch.src)
-        preds, _ = decoder(batch.trg, hidden, context)
-        
-        preds_n = preds[{"trgSeqlen": slice(0,preds.size("trgSeqlen")-1)}] # XXXXXXX_
-        trg_n = batch.trg[{"trgSeqlen": slice(1,preds.size("trgSeqlen"))}] # _XXXXXXX
-        
-        loss = loss_func(preds_n, trg_n)
-        loss = loss*(trg_n!=1).float() #only credit for non-pad predictions
-        
-        total_loss += loss.sum(('trgSeqlen','batch')).item() #sum up all the loss
-        total_tokens += (trg_n!=1).long().sum(('trgSeqlen','batch')).item() #add all non-padding tokens
+        with torch.no_grad():
+            preds = model(batch.src, batch.trg)
+            
+            #Miro 2:30 PM 3/1/19: Shift prediction vs target - don't predict identity mapping
+            trg_n = batch.trg[{"trgSeqlen": slice(1,1+preds.size("trgSeqlen"))}]
+            
+            loss = loss_func(preds, trg_n)
+            #loss = loss*(trg_n!=1).float() #only credit for non-pad predictions
+            
+            total_loss += loss.sum(('trgSeqlen','batch')).item() #sum up all the loss
+            total_tokens += (trg_n!=1).long().sum(('trgSeqlen','batch')).item() #add all non-padding tokens
     ppl = np.exp((total_loss/total_tokens))
     return ppl
 
-def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32, prefix = "checkpoint", weight_decay=0.):
+def train_model(model, corpus_data, num_epochs=10, lr=0.001, bsz=32, prefix = "checkpoint", weight_decay=0.):
     """Trains a basic seq2seq model.
 
     Parameters
     ----------
-    encoder : ntorch.nn.Module
-        The `LSTM` that will encode the input.
-    decoder: ntorch.nn.Module
-        Decodes input
+    model : ntorch.nn.Module
     corpus_data : (train : torchtext.datasets, val : torchtext.datasets)
         The data that is going to be used for training and in validation
     """
@@ -57,44 +52,36 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32, 
     train_iter, val_iter = data.BucketIterator.splits(corpus_data, batch_size=bsz, device=device,
                                                     repeat=False, sort_key=lambda x: len(x.src))
 
-    loss_func = ntorch.nn.CrossEntropyLoss().spec("vocab")
-    encoder_opt = torch.optim.Adam(encoder.parameters(), lr=lr, weight_decay = weight_decay)
-    decoder_opt = torch.optim.Adam(decoder.parameters(), lr=lr, weight_decay=weight_decay)
-    ppl = 10000
-    print("[***] Starting ppl %f" %eval_perplexity(encoder, decoder, val_iter))
+    loss_func = ntorch.nn.CrossEntropyLoss(ignore_index=1).spec("vocab")
+    opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay = weight_decay)
+    ppl = eval_perplexity(model, val_iter)
+    print("[***] Starting ppl %f" % ppl)
 
-    encoder.train() #
-    decoder.train()
+    model.train()
 
     for epoch in range(num_epochs):
         for batch in tqdm(train_iter):
             
-            encoder_opt.zero_grad()
-            decoder_opt.zero_grad()
+            opt.zero_grad()
             
-            decoder_context, hidden = encoder(batch.src)
-            preds, _ = decoder(batch.trg, hidden, decoder_context)
+            preds = model(batch.src, batch.trg)
             
             #Miro 2:30 PM 3/1/19: Shift prediction vs target - don't predict identity mapping
-            preds_n = preds[{"trgSeqlen": slice(0,preds.size("trgSeqlen")-1)}]
-            trg_n = batch.trg[{"trgSeqlen": slice(1,preds.size("trgSeqlen"))}]
+            trg_n = batch.trg[{"trgSeqlen": slice(1,1+preds.size("trgSeqlen"))}]
             
-            loss = loss_func(preds_n, trg_n)
+            loss = loss_func(preds, trg_n)
             loss.backward() #backprop thru loss
-            encoder_opt.step()
-            decoder_opt.step() #descend!
-        temp_ppl =  eval_perplexity(encoder, decoder, val_iter)
+            opt.step()
+        temp_ppl =  eval_perplexity(model, val_iter)
         print("\n[***] EPOCH %d: Loss %f, val perplexity %f"\
                 % (epoch, loss.item(), temp_ppl)) #update
         if epoch % 5 == 0:
             if temp_ppl < ppl:
                 print("[***] Saving model with improved perplexity")
                 ppl = temp_ppl
-                torch.save(decoder.state_dict(), prefix+"_p"+str(ppl)+"_e"+str(epoch)+"_"+"decoder"+".w")
-                torch.save(encoder.state_dict(), prefix+"_p"+str(ppl)+"_e"+str(epoch)+"_"+"encoder"+".w")
+                torch.save(model.state_dict(), prefix+"_p"+str(ppl)+"_e"+str(epoch)+"_"+"model"+".w")
 
-        encoder.train() #turn dropout back on
-        decoder.train()
+        model.train() #turn dropout back on
 
 def parse_arguments():
     "Parse arguments from console"
@@ -103,10 +90,8 @@ def parse_arguments():
                    help='number of epochs for train')
     p.add_argument('--prefix', default="checkpoint",
                    help='Prefix for model checkpointing')
-    p.add_argument('--decoder_path', default=None,
-                   help='Path to decoder')
-    p.add_argument('--encoder_path', default=None,
-                   help='Path to encoder')
+    p.add_argument('--model_path', default=None,
+                   help='Path to model')
     p.add_argument('--lr', type=float, default=0.0001,
                    help='learning rate for adam')
     p.add_argument('--decay', type=float, default=0.0005,
@@ -152,19 +137,15 @@ def main():
     train, val, _ = generate_data() #throw away test just to be safe!
 
     print("[*] Building initial model on CUDA")
-    encoder = model_seq.EncoderS2S().cuda()
     if args.attn:
-        decoder = model_attn.DecoderAttn(n=args.n).cuda()
+        model = AttnNet(n=args.n).cuda()
     else:
-        decoder = model_seq.DecoderS2S().cuda()
-    if args.decoder_path:
-        print("[*] Loading decoder model from file")
-        decoder.load_state_dict(torch.load(args.decoder_path))
-    if args.encoder_path:
-        print("[*] Loading encoder model from file")
-        encoder.load_state_dict(torch.load(args.encoder_path))
+        model = S2SNet().cuda()
+    if args.model_path:
+        print("[*] Loading model from file")
+        model.load_state_dict(torch.load(args.model_path))
     print("\t🧗 Begin loss function descent")
-    train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr,\
+    train_model(model, (train, val), num_epochs=args.epochs, lr=args.lr,\
          bsz=args.bsz, prefix=args.prefix, weight_decay=args.decay)
 
 
