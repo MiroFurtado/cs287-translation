@@ -7,7 +7,7 @@ from tqdm import tqdm
 import numpy as np
 import argparse
 import spacy
-import model
+from model import *
 
 
 def eval_perplexity(model, corpus_iter):
@@ -138,9 +138,9 @@ def main():
 
     print("[*] Building initial model on CUDA")
     if args.attn:
-        model = model.AttnNet(n=args.n).cuda()
+        model = AttnNet(n=args.n).cuda()
     else:
-        model = model.S2SNet().cuda()
+        model = S2SNet().cuda()
     if args.model_path:
         print("[*] Loading model from file")
         model.load_state_dict(torch.load(args.model_path))
