@@ -274,7 +274,7 @@ def parse_arguments():
                    help='Saves beam graph')
     return p.parse_args()
 
-def bleu_output(args, encoder, decoder):
+def bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device):
     print("[*] Translating")
     if args.writepreds:
         f = open(args.prefix + "_preds.txt", "w")
@@ -322,7 +322,7 @@ def main():
     
     print("[*] Translating")
     if args.bleu:
-        bleu_output(args, encoder, decoder)
+        bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device)
         return
 
     if args.writepreds:
