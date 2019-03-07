@@ -1,6 +1,6 @@
 # Naive Basil Pesto - Miro Furtado & Simon Shen
 # Acknowledgement: Thanks to CS287 TFs https://colab.research.google.com/drive/1kPE8v6j9aRO1xxRRxM-YLXI_5TVwLZlg.
-import torch, argparse, model_seq, model_attn, daft, pickle
+import torch, argparse, model, daft, pickle
 from torchtext import data, datasets
 from namedtensor import ntorch, NamedTensor
 from namedtensor.text import NamedField
@@ -319,11 +319,11 @@ def main():
     print("[*] Loading models on %s" % device)
     encoder_weights = torch.load(args.encoder, map_location=device)
     decoder_weights = torch.load(args.decoder, map_location=device)
-    encoder = model_seq.EncoderS2S(hidden_dim=encoder_weights["embedding.weight"].shape[1]).to(device)
+    encoder = model.EncoderS2S(hidden_dim=encoder_weights["embedding.weight"].shape[1]).to(device)
     if args.attn:
-        decoder = model_attn.DecoderAttn(hidden_dim=decoder_weights["embedding.weight"].shape[1], n = args.n).to(device)
+        decoder = model.DecoderAttn(hidden_dim=decoder_weights["embedding.weight"].shape[1], n = args.n).to(device)
     else:
-        decoder = model_seq.DecoderS2S(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
+        decoder = model.DecoderS2S(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
     encoder.load_state_dict(encoder_weights)
     decoder.load_state_dict(decoder_weights)
 
