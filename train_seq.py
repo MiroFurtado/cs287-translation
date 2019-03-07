@@ -28,7 +28,7 @@ def eval_perplexity(model, corpus_iter):
             #Miro 2:30 PM 3/1/19: Shift prediction vs target - don't predict identity mapping
             trg_n = batch.trg[{"trgSeqlen": slice(1,preds.size("trgSeqlen"))}]
             
-            loss = loss_func(preds_n, trg_n)
+            loss = loss_func(preds, trg_n)
             #loss = loss*(trg_n!=1).float() #only credit for non-pad predictions
             
             total_loss += loss.sum(('trgSeqlen','batch')).item() #sum up all the loss
@@ -54,8 +54,8 @@ def train_model(model, corpus_data, num_epochs=10, lr=0.001, bsz=32, prefix = "c
 
     loss_func = ntorch.nn.CrossEntropyLoss(ignore_index=1).spec("vocab")
     opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay = weight_decay)
-    ppl = 10000
-    print("[***] Starting ppl %f" %eval_perplexity(model, val_iter))
+    ppl = eval_perplexity(model, val_iter)
+    print("[***] Starting ppl %f" % ppl)
 
     model.train()
 
@@ -69,7 +69,7 @@ def train_model(model, corpus_data, num_epochs=10, lr=0.001, bsz=32, prefix = "c
             #Miro 2:30 PM 3/1/19: Shift prediction vs target - don't predict identity mapping
             trg_n = batch.trg[{"trgSeqlen": slice(1,preds.size("trgSeqlen"))}]
             
-            loss = loss_func(preds_n, trg_n)
+            loss = loss_func(preds, trg_n)
             loss.backward() #backprop thru loss
             opt.step()
         temp_ppl =  eval_perplexity(model, val_iter)
