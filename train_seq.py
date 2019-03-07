@@ -157,7 +157,7 @@ def main():
         print("[*] Loading model from file")
         decoder.load_state_dict(torch.load(args.decoder_path))
     if args.encoder_path:
-        decoder.load_state_dict(torch.load(args.encoder_path))
+        encoder.load_state_dict(torch.load(args.encoder_path))
     print("\t🧗 Begin loss function descent")
     print("\t\t Hyperparameters: lr %f, epochs %d, bsz %d, decay %f" %(args.lr, args.epochs, args.bsz, args.decay))
     train_model(encoder, decoder, (train, val), num_epochs=args.epochs, lr=args.lr,\
