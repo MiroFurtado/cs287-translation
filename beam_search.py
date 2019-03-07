@@ -277,8 +277,6 @@ def parse_arguments():
                    help='Print predictions and average log probabilities')
     p.add_argument('--writebeam', action='store_true',
                    help='Saves beam graph')
-    p.add_argument('--n', type=int, default=2,
-                   help='hidden state multiplier')
     return p.parse_args()
 
 def bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device):
