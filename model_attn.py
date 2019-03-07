@@ -22,9 +22,9 @@ class DecoderAttn(ntorch.nn.Module):
 
         attn_weights = hidden.dot("hidden", decoder_context).softmax("srcSeqlen")
         context = attn_weights.dot("srcSeqlen", decoder_context) # (batch, trgSeqlen, hidden)
-        return context
+        return context, attn_weights
 
-    def forward(self, input, hidden, decoder_context):
+    def forward(self, input, hidden, decoder_context, return_attn=False):
         """Forward pass
         
         Parameters (all NamedTensors)
@@ -43,9 +43,12 @@ class DecoderAttn(ntorch.nn.Module):
         x = self.dropout(x)
         x, hidden = self.LSTM(x, hidden)
         x = self.dropout(x) #Miro 4:15 PM 3/4/19 - Changing dropout location
-        context = self.get_context(x, decoder_context)
+        context, attn_weights = self.get_context(x, decoder_context)
 
         x = self.h2h(ntorch.cat([x,context], "hidden")).relu()
         y = self.out(x)
         # No softmax because cross-entropy
-        return y, hidden
+        if return_attn:
+            return y, hidden, attn_weights
+        else:
+            return y, hidden
