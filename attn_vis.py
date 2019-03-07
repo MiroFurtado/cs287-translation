@@ -28,22 +28,12 @@ def parse_arguments():
                    help='File of weights for encoder')
     p.add_argument('decoder', type=open_rb,
                    help='File of weights for decoder')
-    p.add_argument('-k', '--beam_width', type=int, default=10,
-                   help='Beam width')
-    p.add_argument('--hypotheses', type=int, default=100,
-                   help='Number of hypotheses to be outputted')
     p.add_argument('--maxlen', type=int, default=3,
                    help='Maximum hypothesis length')
+    p.add_argument('--linenum', type=int, default=0,
+                   help='Zero-indexed line number of sentence to be translated')
     p.add_argument('--attn', action='store_true')
     p.add_argument('--cuda', action='store_true')
-    p.add_argument('--prefix', default="beamsearch",
-                   help='Prefix for filenames')
-    p.add_argument('--writepreds', action='store_true',
-                   help='Write predictions to file')
-    p.add_argument('--printpreds', action='store_true',
-                   help='Print predictions and average log probabilities')
-    p.add_argument('--writebeam', action='store_true',
-                   help='Saves beam graph')
     return p.parse_args()
 
 def main():
@@ -59,10 +49,12 @@ def main():
     encoder_weights = torch.load(args.encoder, map_location=device)
     decoder_weights = torch.load(args.decoder, map_location=device)
     encoder = model_seq.EncoderS2S(hidden_dim=encoder_weights["embedding.weight"].shape[1]).to(device)
+    hidden_dim = decoder_weights["embedding.weight"].shape[1]
+    hidden_size_n = int(decoder_weights["h2h.weight"].shape[0] / hidden_dim)
     if args.attn:
-        decoder = model_attn.DecoderAttn(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
+        decoder = model_attn.DecoderAttn(hidden_dim=hidden_dim, n=hidden_size_n).to(device)
     else:
-        decoder = model_seq.DecoderS2S(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
+        decoder = model_seq.DecoderS2S(hidden_dim=hidden_dim, n=hidden_size_n).to(device)
     encoder.load_state_dict(encoder_weights)
     decoder.load_state_dict(decoder_weights)
     encoder.eval() # no dropout :(
@@ -70,7 +62,7 @@ def main():
     
     print("[*] Translating")
     for i, sentence in tqdm(enumerate(open("source_test.txt")), total=800, position=0):
-        if i < 25:
+        if i < args.linenum:
             continue
         de_sentence = [DE_vocab.stoi[word] for word in sentence.split(" ")]
         de_sentence = ntorch.tensor([de_sentence], names=("batch", "srcSeqlen")).to(device)

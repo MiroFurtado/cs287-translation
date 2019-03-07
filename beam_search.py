@@ -286,10 +286,12 @@ def main():
     encoder_weights = torch.load(args.encoder, map_location=device)
     decoder_weights = torch.load(args.decoder, map_location=device)
     encoder = model_seq.EncoderS2S(hidden_dim=encoder_weights["embedding.weight"].shape[1]).to(device)
+    hidden_dim = decoder_weights["embedding.weight"].shape[1]
+    hidden_size_n = int(decoder_weights["h2h.weight"].shape[0] / hidden_dim)
     if args.attn:
-        decoder = model_attn.DecoderAttn(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
+        decoder = model_attn.DecoderAttn(hidden_dim=hidden_dim, n=hidden_size_n).to(device)
     else:
-        decoder = model_seq.DecoderS2S(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
+        decoder = model_seq.DecoderS2S(hidden_dim=hidden_dim, n=hidden_size_n).to(device)
     encoder.load_state_dict(encoder_weights)
     decoder.load_state_dict(decoder_weights)
     encoder.eval() # no dropout :(
