@@ -23,7 +23,7 @@ def eval_perplexity(model, corpus_iter):
 
     for batch in tqdm(corpus_iter):
         with torch.no_grad():
-            preds = model(batch.src)
+            preds = model(batch.src, batch.trg)
             
             #Miro 2:30 PM 3/1/19: Shift prediction vs target - don't predict identity mapping
             trg_n = batch.trg[{"trgSeqlen": slice(1,preds.size("trgSeqlen"))}]
@@ -64,7 +64,7 @@ def train_model(model, corpus_data, num_epochs=10, lr=0.001, bsz=32, prefix = "c
             
             opt.zero_grad()
             
-            preds = model(batch.src)
+            preds = model(batch.src, batch.trg)
             
             #Miro 2:30 PM 3/1/19: Shift prediction vs target - don't predict identity mapping
             trg_n = batch.trg[{"trgSeqlen": slice(1,preds.size("trgSeqlen"))}]

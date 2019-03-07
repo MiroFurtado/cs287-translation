@@ -7,9 +7,9 @@ class S2SNet(ntorch.nn.Module):
     self.encoder = EncoderS2S(hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout)
     self.decoder = DecoderS2S(hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout)
 
-  def forward(self, input):
-    context, hidden = self.encoder(input)
-    preds, _ = self.decoder(input, hidden, context)
+  def forward(self, src, trg):
+    context, hidden = self.encoder(src)
+    preds, _ = self.decoder(trg, hidden, context)
     return preds[{"trgSeqlen": slice(0,preds.size("trgSeqlen")-1)}]
 
 class AttnNet(ntorch.nn.Module):
@@ -18,9 +18,9 @@ class AttnNet(ntorch.nn.Module):
     self.encoder = EncoderS2S(hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout)
     self.decoder = DecoderAttn(hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout, n=n)
 
-  def forward(self, input):
-    context, hidden = self.encoder(input)
-    preds, _ = self.decoder(input, hidden, context)
+  def forward(self, src, trg):
+    context, hidden = self.encoder(src)
+    preds, _ = self.decoder(trg, hidden, context)
     return preds[{"trgSeqlen": slice(0,preds.size("trgSeqlen")-1)}]
 
 class EncoderS2S(ntorch.nn.Module):
