@@ -63,6 +63,7 @@ def train_model(encoder, decoder, corpus_data, num_epochs=10, lr=0.001, bsz=32, 
     encoder_opt = torch.optim.Adam(encoder.parameters(), lr=lr, weight_decay = weight_decay)
     decoder_opt = torch.optim.Adam(decoder.parameters(), lr=lr, weight_decay=weight_decay)
     ppl = 10000
+    print("[***] Starting ppl %f" %eval_perplexity(encoder, decoder, val_iter))
 
     for epoch in range(num_epochs):
         for batch in tqdm(train_iter):

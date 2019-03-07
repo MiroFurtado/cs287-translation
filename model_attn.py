@@ -5,7 +5,7 @@ class DecoderAttn(ntorch.nn.Module):
     """Decoder based on the implementation in Yuntian's slides and Luong.
     """
 
-    def __init__(self, hidden_dim = 512, num_layers = 2, dropout = 0.5, trg_vocab_len = 11560):
+    def __init__(self, hidden_dim = 512, num_layers = 2, dropout = 0.5, trg_vocab_len = 11560, n=1):
         super(DecoderAttn, self).__init__()
 
         self.embedding = ntorch.nn.Embedding(trg_vocab_len, hidden_dim).spec("trgSeqlen", "embedding")
@@ -13,8 +13,8 @@ class DecoderAttn(ntorch.nn.Module):
 
         self.dropout = ntorch.nn.Dropout(dropout)
         self.LSTM = ntorch.nn.LSTM(hidden_dim, hidden_dim, num_layers, dropout=dropout).spec("embedding", "trgSeqlen", "hidden")
-        self.h2h = ntorch.nn.Linear(2*hidden_dim, hidden_dim).spec("hidden", "hidden") #reduce to hidden
-        self.out = ntorch.nn.Linear(hidden_dim, trg_vocab_len).spec("hidden", "vocab")
+        self.h2h = ntorch.nn.Linear(2*hidden_dim, n*hidden_dim).spec("hidden", "hidden") #reduce to hidden
+        self.out = ntorch.nn.Linear(n*hidden_dim, trg_vocab_len).spec("hidden", "vocab")
 
     def get_context(self, hidden, decoder_context):
         """(batch, srcSeqlen, hidden) x (batch, trgSeqlen, hidden) -> (batch, trgSeqlen, srcSeqlen)
