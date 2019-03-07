@@ -272,6 +272,8 @@ def parse_arguments():
                    help='Print predictions and average log probabilities')
     p.add_argument('--writebeam', action='store_true',
                    help='Saves beam graph')
+    p.add_argument('--n', type=int, default=2,
+                   help='hidden state multiplier')
     return p.parse_args()
 
 def bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device):
@@ -314,7 +316,7 @@ def main():
     decoder_weights = torch.load(args.decoder, map_location=device)
     encoder = model_seq.EncoderS2S(hidden_dim=encoder_weights["embedding.weight"].shape[1]).to(device)
     if args.attn:
-        decoder = model_attn.DecoderAttn(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
+        decoder = model_attn.DecoderAttn(hidden_dim=decoder_weights["embedding.weight"].shape[1], n = args.n).to(device)
     else:
         decoder = model_seq.DecoderS2S(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
     encoder.load_state_dict(encoder_weights)
