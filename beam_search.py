@@ -1,6 +1,6 @@
 # Naive Basil Pesto - Miro Furtado & Simon Shen
 # Acknowledgement: Thanks to CS287 TFs https://colab.research.google.com/drive/1kPE8v6j9aRO1xxRRxM-YLXI_5TVwLZlg.
-import torch, argparse, model_seq, model_attn, daft, pickle
+import torch, argparse, model, daft, pickle
 from torchtext import data, datasets
 from namedtensor import ntorch, NamedTensor
 from namedtensor.text import NamedField
@@ -12,6 +12,11 @@ import matplotlib.pyplot as plt
 def unsqueeze(tens, dim):
     existing_dim = tens.dims[0]
     return tens._split(existing_dim, (existing_dim, dim), {dim: 1})
+def escape_bleu(l):
+    l = l.split()
+    l.append('</s>')
+    return ' '.join(l[:l.index('</s>')])+"\n"
+
 def escape(l):
     return l.replace("\"", "<quote>").replace(",", "<comma>")
 # HELPERS - performs operation on each element of tuple
@@ -262,6 +267,7 @@ def parse_arguments():
     p.add_argument('--maxlen', type=int, default=3,
                    help='Maximum hypothesis length')
     p.add_argument('--attn', action='store_true')
+    p.add_argument('--bleu', action='store_true')
     p.add_argument('--cuda', action='store_true')
     p.add_argument('--prefix', default="beamsearch",
                    help='Prefix for filenames')
@@ -271,7 +277,35 @@ def parse_arguments():
                    help='Print predictions and average log probabilities')
     p.add_argument('--writebeam', action='store_true',
                    help='Saves beam graph')
+    p.add_argument('--n', type=int, default=2,
+                   help='hidden state multiplier')
     return p.parse_args()
+
+def bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device):
+    if args.writepreds:
+        f = open(args.prefix + "_preds.txt", "w")
+    for i, sentence in tqdm(enumerate(open("source_test.txt")), total=800, position=0):
+        de_sentence = [DE_vocab.stoi[word] for word in sentence.split(" ")]
+        de_sentence = ntorch.tensor([de_sentence], names=("batch", "srcSeqlen")).to(device)
+        de_sentence = de_sentence.transpose("srcSeqlen", "batch")
+        encoded_context, encoded_summary = encoder(de_sentence)
+        encoded_summary = get_each(encoded_summary, "batch", 0) #squeeze batch dim
+        encoded_context = encoded_context[{"batch": 0}]
+
+        words, _, avgscores, stack = beam_decode(encoded_summary, decoder, maxlen=args.maxlen, beam_width=args.beam_width, device=device, encoded_context=encoded_context, num_hypotheses_out=1)
+
+        if args.writepreds:
+            sentence = ' '.join([EN_vocab.itos[i] for i in words[{"beam": 0}].tolist()])
+            f.write(escape_bleu(sentence))
+        if args.printpreds:
+            tqdm.write("\n  GERMAN: " + ' '.join([DE_vocab.itos[i] for i in de_sentence.squeeze("batch").tolist()]))
+            for h in range(args.hypotheses):
+                tqdm.write('{:.5f}: '.format(avgscores[{"beam": h}].item()) + ' '.join([EN_vocab.itos[i] for i in words[{"beam": h}].tolist()]))
+        if args.writebeam:
+            display_beam(stack, EN_vocab, show_token=True)
+            plt.savefig(args.prefix + "_beam_%03d.png" % i)
+    if args.writepreds:
+        f.close()
 
 def main():
     "Entrance function for running from console"
@@ -285,17 +319,21 @@ def main():
     print("[*] Loading models on %s" % device)
     encoder_weights = torch.load(args.encoder, map_location=device)
     decoder_weights = torch.load(args.decoder, map_location=device)
-    encoder = model_seq.EncoderS2S(hidden_dim=encoder_weights["embedding.weight"].shape[1]).to(device)
+    encoder = model.EncoderS2S(hidden_dim=encoder_weights["embedding.weight"].shape[1]).to(device)
     if args.attn:
-        decoder = model_attn.DecoderAttn(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
+        decoder = model.DecoderAttn(hidden_dim=decoder_weights["embedding.weight"].shape[1], n = args.n).to(device)
     else:
-        decoder = model_seq.DecoderS2S(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
+        decoder = model.DecoderS2S(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
     encoder.load_state_dict(encoder_weights)
     decoder.load_state_dict(decoder_weights)
-    encoder.eval() # no dropout :(
+    encoder.eval()
     decoder.eval()
     
     print("[*] Translating")
+    if args.bleu:
+        bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device)
+        return
+
     if args.writepreds:
         f = open(args.prefix + "_preds.txt", "w")
         f.write("Id,Predicted\n")
@@ -320,6 +358,8 @@ def main():
             plt.savefig(args.prefix + "_beam_%03d.png" % i)
     if args.writepreds:
         f.close()
+
+
 
 if __name__ == "__main__":
     try:
