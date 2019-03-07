@@ -12,6 +12,11 @@ import matplotlib.pyplot as plt
 def unsqueeze(tens, dim):
     existing_dim = tens.dims[0]
     return tens._split(existing_dim, (existing_dim, dim), {dim: 1})
+def escape_bleu(l):
+    l = l.split()
+    l.append('</s>')
+    return ' '.join(l[:l.index('</s>')])
+
 def escape(l):
     return l.replace("\"", "<quote>").replace(",", "<comma>")
 # HELPERS - performs operation on each element of tuple
@@ -277,7 +282,6 @@ def parse_arguments():
     return p.parse_args()
 
 def bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device):
-    print("[*] Translating")
     if args.writepreds:
         f = open(args.prefix + "_preds.txt", "w")
     for i, sentence in tqdm(enumerate(open("source_test.txt")), total=800, position=0):
@@ -291,7 +295,9 @@ def bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device):
         words, _, avgscores, stack = beam_decode(encoded_summary, decoder, maxlen=args.maxlen, beam_width=args.beam_width, device=device, encoded_context=encoded_context, num_hypotheses_out=1)
 
         if args.writepreds:
-            f.write(' '.join([escape(EN_vocab.itos[i]) for i in words[{"beam": 0}].tolist()]) + "\n")
+            sentence = ' '.join([escape_bleu(EN_vocab.itos[i]) for i in words[{"beam": 0}].tolist()]) + "\n"
+            
+            f.write(sentence)
         if args.printpreds:
             tqdm.write("\n  GERMAN: " + ' '.join([DE_vocab.itos[i] for i in de_sentence.squeeze("batch").tolist()]))
             for h in range(args.hypotheses):
@@ -321,6 +327,9 @@ def main():
         decoder = model_seq.DecoderS2S(hidden_dim=decoder_weights["embedding.weight"].shape[1]).to(device)
     encoder.load_state_dict(encoder_weights)
     decoder.load_state_dict(decoder_weights)
+
+    encoder.eval()
+    decoder.eval()
     
     print("[*] Translating")
     if args.bleu:
