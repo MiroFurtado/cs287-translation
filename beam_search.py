@@ -295,9 +295,8 @@ def bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device):
         words, _, avgscores, stack = beam_decode(encoded_summary, decoder, maxlen=args.maxlen, beam_width=args.beam_width, device=device, encoded_context=encoded_context, num_hypotheses_out=1)
 
         if args.writepreds:
-            sentence = ' '.join([escape_bleu(EN_vocab.itos[i]) for i in words[{"beam": 0}].tolist()]) + "\n"
-            
-            f.write(sentence)
+            sentence = ' '.join([EN_vocab.itos[i] for i in words[{"beam": 0}].tolist()]) + " \n"
+            f.write(escape_bleu(sentence))
         if args.printpreds:
             tqdm.write("\n  GERMAN: " + ' '.join([DE_vocab.itos[i] for i in de_sentence.squeeze("batch").tolist()]))
             for h in range(args.hypotheses):
