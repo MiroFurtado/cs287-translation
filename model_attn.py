@@ -5,7 +5,7 @@ class DecoderAttn(ntorch.nn.Module):
     """Decoder based on the implementation in Yuntian's slides and Luong.
     """
 
-    def __init__(self, hidden_dim = 512, num_layers = 2, dropout = 0.5, trg_vocab_len = 11560, n=1):
+    def __init__(self, hidden_dim = 512, num_layers = 2, dropout = 0.5, trg_vocab_len = 11560, n=2):
         super(DecoderAttn, self).__init__()
 
         self.embedding = ntorch.nn.Embedding(trg_vocab_len, hidden_dim).spec("trgSeqlen", "embedding")
