@@ -15,7 +15,7 @@ def unsqueeze(tens, dim):
 def escape_bleu(l):
     l = l.split()
     l.append('</s>')
-    return ' '.join(l[:l.index('</s>')])
+    return ' '.join(l[:l.index('</s>')])+"\n"
 
 def escape(l):
     return l.replace("\"", "<quote>").replace(",", "<comma>")
@@ -295,7 +295,7 @@ def bleu_output(args, encoder, decoder, EN_vocab, DE_vocab, device):
         words, _, avgscores, stack = beam_decode(encoded_summary, decoder, maxlen=args.maxlen, beam_width=args.beam_width, device=device, encoded_context=encoded_context, num_hypotheses_out=1)
 
         if args.writepreds:
-            sentence = ' '.join([EN_vocab.itos[i] for i in words[{"beam": 0}].tolist()]) + " \n"
+            sentence = ' '.join([EN_vocab.itos[i] for i in words[{"beam": 0}].tolist()])
             f.write(escape_bleu(sentence))
         if args.printpreds:
             tqdm.write("\n  GERMAN: " + ' '.join([DE_vocab.itos[i] for i in de_sentence.squeeze("batch").tolist()]))
