@@ -3,6 +3,7 @@ from namedtensor import ntorch, NamedTensor
 
 class S2SNet(ntorch.nn.Module):
   def __init__(self, hidden_dim=512, num_layers=2, dropout=0.5):
+    super(S2SNet, self).__init__()
     self.encoder = EncoderS2S(hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout)
     self.decoder = DecoderS2S(hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout)
 
@@ -13,6 +14,7 @@ class S2SNet(ntorch.nn.Module):
 
 class AttnNet(ntorch.nn.Module):
   def __init__(self, hidden_dim=512, num_layers=2, dropout=0.5, n=2):
+    super(AttnNet, self).__init__()
     self.encoder = EncoderS2S(hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout)
     self.decoder = DecoderAttn(hidden_dim=hidden_dim, num_layers=num_layers, dropout=dropout, n=n)
 
