@@ -260,6 +260,8 @@ def parse_arguments():
                    help='File of weights for wrapped model')
     p.add_argument('src', type=open,
                    help='German text file to be translated')
+    p.add_argument('--trg', type=open,
+                   help='English text file of true translations')
     p.add_argument('-k', '--beam_width', type=int, default=10,
                    help='Beam width')
     p.add_argument('--hypotheses', type=int, default=100,
@@ -326,6 +328,8 @@ def main():
             f_bleu.write(escape_bleu(sentence))
         if args.printpreds:
             tqdm.write("\n  GERMAN: " + ' '.join([DE_vocab.itos[i] for i in de_sentence.squeeze("batch").tolist()]))
+            if args.trg is not None:
+                tqdm.write(" ENGLISH: " + args.trg.readline())
             for h in range(args.hypotheses):
                 tqdm.write('{:.5f}: '.format(avgscores[{"beam": h}].item()) + ' '.join([EN_vocab.itos[i] for i in words[{"beam": h}].tolist()]))
         if args.writebeam:
