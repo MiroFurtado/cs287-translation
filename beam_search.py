@@ -310,6 +310,8 @@ def main():
     if args.bleu:
         f_bleu = open(args.prefix + "_bleu_preds.txt", "w")
     for i, sentence in tqdm(enumerate(args.src), position=0):
+        if args.trg is not None:
+            en_sentence = args.trg.readline()
         if args.linenum is not None and not args.linenum == i:
             continue
         de_sentence = [DE_vocab.stoi[word] for word in sentence.split(" ")]
@@ -329,11 +331,12 @@ def main():
         if args.printpreds:
             tqdm.write("\n  GERMAN: " + ' '.join([DE_vocab.itos[i] for i in de_sentence.squeeze("batch").tolist()]))
             if args.trg is not None:
-                tqdm.write(" ENGLISH: " + args.trg.readline())
+                tqdm.write(" ENGLISH: " + en_sentence)
             for h in range(args.hypotheses):
                 tqdm.write('{:.5f}: '.format(avgscores[{"beam": h}].item()) + ' '.join([EN_vocab.itos[i] for i in words[{"beam": h}].tolist()]))
         if args.writebeam:
             display_beam(stack, EN_vocab, show_token=True)
+            plt.gca().invert_yaxis()
             plt.savefig(args.prefix + "_beam_%03d.png" % i)
     if args.writepreds:
         f.close()
