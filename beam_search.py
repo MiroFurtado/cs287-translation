@@ -256,10 +256,8 @@ def parse_arguments():
     p = argparse.ArgumentParser(description='Hyperparams')
     p.add_argument('vocab', type=open_rb,
                    help='File of DE vocab and EN vocab as NamedFields. Suggested: "DE_EN_vocab.pkl"')
-    p.add_argument('encoder', type=open_rb,
-                   help='File of weights for encoder')
-    p.add_argument('decoder', type=open_rb,
-                   help='File of weights for decoder')
+    p.add_argument('model', type=open_rb,
+                   help='File of weights for wrapped model')
     p.add_argument('src', type=open,
                    help='German text file to be translated')
     p.add_argument('-k', '--beam_width', type=int, default=10,
@@ -268,6 +266,8 @@ def parse_arguments():
                    help='Number of hypotheses to be outputted')
     p.add_argument('--maxlen', type=int, default=3,
                    help='Maximum hypothesis length')
+    p.add_argument('--linenum', type=int, default=None,
+                   help='Line in source file to be translated')
     p.add_argument('--attn', action='store_true')
     p.add_argument('--bleu', action='store_true',
                    help='Write predictions to file in BLEU calculation format')
@@ -292,19 +292,13 @@ def main():
     EN_vocab = pickle.load(args.vocab)
 
     print("[*] Loading models on %s" % device)
-    encoder_weights = torch.load(args.encoder, map_location=device)
-    decoder_weights = torch.load(args.decoder, map_location=device)
-    encoder = model.EncoderS2S(hidden_dim=encoder_weights["embedding.weight"].shape[1]).to(device)
-    hidden_dim = decoder_weights["embedding.weight"].shape[1]
-    hidden_size_n = int(decoder_weights["h2h.weight"].shape[0] / hidden_dim)
+    mdl_weights = torch.load(args.model, map_location=device)
     if args.attn:
-        decoder = model.DecoderAttn(hidden_dim=hidden_dim, n=hidden_size_n).to(device)
+        mdl = model.AttnNet().to(device)
     else:
-        decoder = model.DecoderS2S(hidden_dim=hidden_dim, n=hidden_size_n).to(device)
-    encoder.load_state_dict(encoder_weights)
-    decoder.load_state_dict(decoder_weights)
-    encoder.eval()
-    decoder.eval()
+        mdl = model.S2SNet().to(device)
+    mdl.load_state_dict(mdl_weights)
+    mdl.eval()
     
     print("[*] Translating")
 
@@ -314,14 +308,16 @@ def main():
     if args.bleu:
         f_bleu = open(args.prefix + "_bleu_preds.txt", "w")
     for i, sentence in tqdm(enumerate(args.src), position=0):
+        if args.linenum is not None and not args.linenum == i:
+            continue
         de_sentence = [DE_vocab.stoi[word] for word in sentence.split(" ")]
         de_sentence = ntorch.tensor([de_sentence], names=("batch", "srcSeqlen")).to(device)
         de_sentence = de_sentence.transpose("srcSeqlen", "batch")
-        encoded_context, encoded_summary = encoder(de_sentence)
+        encoded_context, encoded_summary = mdl.encoder(de_sentence)
         encoded_summary = get_each(encoded_summary, "batch", 0) #squeeze batch dim
         encoded_context = encoded_context[{"batch": 0}]
 
-        words, _, avgscores, stack = beam_decode(encoded_summary, decoder, maxlen=args.maxlen, beam_width=args.beam_width, device=device, encoded_context=encoded_context, num_hypotheses_out=args.hypotheses)
+        words, _, avgscores, stack = beam_decode(encoded_summary, mdl.decoder, maxlen=args.maxlen, beam_width=args.beam_width, device=device, encoded_context=encoded_context, num_hypotheses_out=args.hypotheses)
 
         if args.writepreds:
             f.write(str(i) + "," + ' '.join(['|'.join([escape(EN_vocab.itos[i]) for i in words[{"beam": h}].tolist()]) for h in range(args.hypotheses)]) + "\n")
