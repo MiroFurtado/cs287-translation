@@ -62,12 +62,11 @@ def main():
         de_sentence = ntorch.tensor([de_sentence], names=("batch", "srcSeqlen")).to(device)
         de_sentence = de_sentence.transpose("srcSeqlen", "batch")
         encoded_context, encoded_summary = mdl.encoder(de_sentence)
-        encoded_summary = get_each(encoded_summary, "batch", 0) #squeeze batch dim
         encoded_context = encoded_context[{"batch": 0}]
 
         # First step
         word = ntorch.tensor([[2]], names=("batch", "trgSeqlen")).to(device) # <s>
-        state = unsqueeze_each(encoded_summary, "batch")
+        state = encoded_summary
 
         preds = []
         attn = []
