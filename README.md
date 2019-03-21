@@ -1,6 +1,5 @@
-# CS287 Naive Bayesal Pesto
-
-HW3 Translation
+# CS287 Translation (3/7/19)
+## Miro Furtado and Simon Shen
 
 - `model.py`: encoder-decoder model
 - `train_seq.py`: training
